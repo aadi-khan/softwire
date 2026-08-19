@@ -1,228 +1,133 @@
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 
-// Initialize Resend with your API key (stored in environment variables)
-// You can get a free API key from https://resend.com
+// Initialize Resend with the API key from environment variables
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, email, phone, industry, selectedServices, message, budgetRange } = body;
+    const { name, email, phone, industry, services, notes } = body;
 
-    // Validate required fields
+    // Validate inputs
     if (!name || !email || !phone) {
       return NextResponse.json(
-        { error: 'Name, email, and phone number are required.' },
+        { error: 'Name, email, and phone are required fields.' },
         { status: 400 }
       );
     }
 
-    // Format services list for the email
-    const servicesList = Array.isArray(selectedServices) && selectedServices.length > 0
-      ? selectedServices.join(', ')
-      : 'None selected';
+    // Build list of selected services in HTML format
+    const servicesList = Array.isArray(services) && services.length > 0 
+      ? services.map((s: string) => `<li>${s}</li>`).join('') 
+      : '<li>No specific services selected</li>';
 
-    // Construct the email HTML template
+    // HTML Email Template matching Softwire's branding
     const emailHtml = `
       <!DOCTYPE html>
       <html>
-      <head>
-        <meta charset="utf-8">
-        <title>New Website Inquiry - Softwire</title>
-        <style>
-          body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background-color: #f4f5f6;
-            margin: 0;
-            padding: 20px;
-          }
-          .container {
-            max-width: 600px;
-            background-color: #ffffff;
-            border: 1px solid #e1e4e6;
-            border-radius: 8px;
-            overflow: hidden;
-            margin: 0 auto;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-          }
-          .header {
-            background-color: #0f172a;
-            color: #ffffff;
-            padding: 30px;
-            text-align: center;
-          }
-          .logo {
-            font-size: 24px;
-            font-weight: bold;
-            letter-spacing: 1px;
-            margin-bottom: 5px;
-          }
-          .logo span {
-            color: #f97316; /* Cyber Orange */
-          }
-          .header-subtitle {
-            color: #94a3b8;
-            font-size: 14px;
-            margin: 0;
-          }
-          .content {
-            padding: 30px;
-            color: #334155;
-          }
-          .section-title {
-            font-size: 16px;
-            font-weight: 700;
-            color: #0f172a;
-            border-bottom: 2px solid #e2e8f0;
-            padding-bottom: 8px;
-            margin-top: 25px;
-            margin-bottom: 15px;
-          }
-          .grid {
-            display: table;
-            width: 100%;
-          }
-          .grid-row {
-            display: table-row;
-          }
-          .grid-label {
-            display: table-cell;
-            font-weight: bold;
-            padding: 8px 0;
-            width: 35%;
-            color: #64748b;
-          }
-          .grid-value {
-            display: table-cell;
-            padding: 8px 0;
-            color: #0f172a;
-          }
-          .badge {
-            display: inline-block;
-            background-color: #ffedd5;
-            color: #ea580c;
-            padding: 4px 8px;
-            border-radius: 9999px;
-            font-size: 12px;
-            font-weight: 600;
-            margin-right: 5px;
-            margin-bottom: 5px;
-          }
-          .message-box {
-            background-color: #f8fafc;
-            border-left: 4px solid #f97316;
-            padding: 15px;
-            border-radius: 0 4px 4px 0;
-            font-style: italic;
-            color: #475569;
-            margin-top: 10px;
-            line-height: 1.6;
-          }
-          .footer {
-            background-color: #f8fafc;
-            text-align: center;
-            padding: 20px;
-            font-size: 12px;
-            color: #94a3b8;
-            border-top: 1px solid #e2e8f0;
-          }
-          .footer a {
-            color: #f97316;
-            text-decoration: none;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <!-- Header -->
-          <div class="header">
-            <div class="logo">SOFT<span>WIRE</span></div>
-            <p class="header-subtitle">Intelligent Systems & Technology Integration Inquiry</p>
-          </div>
-
-          <!-- Content -->
-          <div class="content">
-            <p style="font-size: 15px; line-height: 1.5; margin-top: 0;">
-              You have received a new estimation/inquiry request from your website <strong>softwire.info</strong>. Below are the details provided by the client:
-            </p>
-
-            <!-- Client Info Section -->
-            <div class="section-title">Client Information</div>
-            <div class="grid">
-              <div class="grid-row">
-                <div class="grid-label">Contact Name:</div>
-                <div class="grid-value"><strong>${name}</strong></div>
-              </div>
-              <div class="grid-row">
-                <div class="grid-label">Email Address:</div>
-                <div class="grid-value"><a href="mailto:${email}" style="color: #f97316; text-decoration: none;">${email}</a></div>
-              </div>
-              <div class="grid-row">
-                <div class="grid-label">Phone/WhatsApp:</div>
-                <div class="grid-value"><a href="tel:${phone}" style="color: #f97316; text-decoration: none;">${phone}</a></div>
-              </div>
-              <div class="grid-row">
-                <div class="grid-label">Industry/Sector:</div>
-                <div class="grid-value">${industry || 'Not specified'}</div>
-              </div>
+        <head>
+          <meta charset="utf-8">
+          <title>New Softwire System Inquiry</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f4f5; color: #18181b; padding: 20px; }
+            .container { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; border: 1px solid #e4e4e7; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+            .header { background-color: #0f172a; color: #f8fafc; padding: 30px; text-align: center; border-bottom: 4px solid #f97316; }
+            .header h1 { margin: 0; font-size: 24px; font-weight: 700; }
+            .header p { margin: 5px 0 0; color: #94a3b8; font-size: 14px; }
+            .content { padding: 30px; }
+            .section-title { font-size: 16px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #f97316; border-bottom: 1px solid #e4e4e7; padding-bottom: 8px; margin-top: 0; margin-bottom: 15px; }
+            .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px; }
+            .field { background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #f1f5f9; }
+            .field-label { font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 600; margin-bottom: 4px; }
+            .field-value { font-size: 14px; font-weight: 500; color: #0f172a; }
+            .field-value a { color: #f97316; text-decoration: none; }
+            .services-list { background: #f8fafc; padding: 15px 15px 15px 35px; border-radius: 6px; border: 1px solid #f1f5f9; margin-bottom: 25px; }
+            .services-list li { margin-bottom: 6px; font-size: 14px; color: #0f172a; font-weight: 500; }
+            .notes-box { background: #f8fafc; padding: 15px; border-radius: 6px; border: 1px solid #f1f5f9; font-size: 14px; line-height: 1.5; color: #334155; margin-bottom: 25px; white-space: pre-wrap; }
+            .footer { background: #f1f5f9; text-align: center; padding: 20px; font-size: 12px; color: #64748b; border-top: 1px solid #e4e4e7; }
+            .footer p { margin: 0; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>System Integration Inquiry</h1>
+              <p>Softwire — Intelligent Systems & Technology Integration</p>
             </div>
-
-            <!-- Inquiry Details Section -->
-            <div class="section-title">Inquiry Details</div>
-            <div class="grid">
-              <div class="grid-row">
-                <div class="grid-label">Services Selected:</div>
-                <div class="grid-value">
-                  ${
-                    Array.isArray(selectedServices) && selectedServices.length > 0
-                      ? selectedServices.map(s => `<span class="badge">${s}</span>`).join('')
-                      : '<span class="badge" style="background-color: #f1f5f9; color: #64748b;">General Inquiry</span>'
-                  }
+            <div class="content">
+              <h2 class="section-title">Client Information</h2>
+              <div class="grid">
+                <div class="field">
+                  <div class="field-label">Full Name</div>
+                  <div class="field-value">${name}</div>
+                </div>
+                <div class="field">
+                  <div class="field-label">Email Address</div>
+                  <div class="field-value"><a href="mailto:${email}">${email}</a></div>
+                </div>
+                <div class="field">
+                  <div class="field-label">Phone / WhatsApp</div>
+                  <div class="field-value"><a href="tel:${phone}">${phone}</a></div>
+                </div>
+                <div class="field">
+                  <div class="field-label">Industry Sector</div>
+                  <div class="field-value">${industry || 'Not Specified'}</div>
                 </div>
               </div>
-              ${budgetRange ? `
-              <div class="grid-row">
-                <div class="grid-label">Budget Scope:</div>
-                <div class="grid-value">${budgetRange}</div>
+
+              <h2 class="section-title">Requested Integrations</h2>
+              <ul class="services-list">
+                ${servicesList}
+              </ul>
+
+              <h2 class="section-title">Project Scope Notes</h2>
+              <div class="notes-box">
+                ${notes ? notes : 'No additional notes provided.'}
               </div>
-              ` : ''}
             </div>
-
-            <!-- Message Section -->
-            <div class="section-title">Additional Message & Scope Details</div>
-            <div class="message-box">
-              ${message ? message.replace(/\n/g, '<br>') : 'No additional message provided.'}
+            <div class="footer">
+              <p>This inquiry was securely generated via the Softwire website lead pipeline.</p>
+              <p style="margin-top: 5px;">&copy; ${new Date().getFullYear()} Softwire Karachi. All rights reserved.</p>
             </div>
           </div>
-
-          <!-- Footer -->
-          <div class="footer">
-            <p>This message was automatically generated by the Softwire Website lead engine.</p>
-            <p>&copy; ${new Date().getFullYear()} <a href="https://softwire.info">Softwire</a>. Karachi, Pakistan.</p>
-          </div>
-        </div>
-      </body>
+        </body>
       </html>
     `;
 
-    // Send the email using Resend
-    const data = await resend.emails.send({
-      from: 'Softwire Leads <leads@softwire.info>', // Must be a verified domain in Resend
-      to: ['info@softwire.info'],
-      reply_to: email, // Direct reply to the user who filled the form
-      subject: `New IT Integration Inquiry: ${name} (${industry || 'Business'})`,
+    // Send email using Resend
+    // Correcting TypeScript compilation errors:
+    // 1. Used 'replyTo' instead of 'reply_to' to match newer Resend typings
+    // 2. Destructured response to { data, error } to comply with Resend 2.0.0+ syntax
+    const { data, error } = await resend.emails.send({
+      from: 'Softwire Leads <onboarding@resend.dev>', // Replace with your verified sender domain when ready
+      to: 'info@softwire.info',
+      replyTo: email, 
+      subject: `New Softwire Integration Inquiry from ${name}`,
       html: emailHtml,
     });
 
+    if (error) {
+      console.error('Resend API Error:', error);
+      return NextResponse.json(
+        { error: error.message || 'Failed to send lead email' },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json(
-      { success: true, message: 'Inquiry successfully delivered.', id: data.id },
+      { 
+        success: true, 
+        message: 'Lead inquiry email sent successfully!', 
+        id: data?.id 
+      },
       { status: 200 }
     );
-  } catch (error: any) {
-    console.error('Resend API Error:', error);
+
+  } catch (err: any) {
+    console.error('Server Integration Endpoint Error:', err);
     return NextResponse.json(
-      { error: error.message || 'An internal error occurred while processing your request.' },
+      { error: 'Internal Server Error', details: err.message },
       { status: 500 }
     );
   }
